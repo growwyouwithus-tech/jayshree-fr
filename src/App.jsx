@@ -1,0 +1,65 @@
+import { Routes, Route, Navigate } from 'react-router-dom'
+import { useSelector } from 'react-redux'
+
+// Components
+import AuthChecker from './components/AuthChecker'
+
+// Layouts
+import MainLayout from './components/layouts/MainLayout'
+import AuthLayout from './components/layouts/AuthLayout'
+
+// Pages
+import Home from './pages/Home'
+import TestHome from './pages/TestHome'
+import TestConnection from './pages/TestConnection'
+import Login from './pages/Login'
+import Register from './pages/Register'
+import Colonies from './pages/Colonies'
+import ColonyDetails from './pages/ColonyDetails'
+import PropertyDetails from './pages/PropertyDetails'
+import PlotDetails from './pages/PlotDetails'
+import MyBookings from './pages/MyBookings'
+import Profile from './pages/Profile'
+import Referral from './pages/Referral'
+import Notifications from './pages/Notifications'
+
+function App() {
+  const { isAuthenticated } = useSelector((state) => state.auth)
+
+  return (
+    <AuthChecker>
+      <Routes>
+      {/* Auth Routes - Always accessible */}
+      <Route element={<AuthLayout />}>
+        <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <Login />} />
+        <Route path="/register" element={isAuthenticated ? <Navigate to="/" replace /> : <Register />} />
+      </Route>
+
+      {/* Public Routes */}
+      <Route element={<MainLayout />}>
+        <Route path="/" element={<Home />} />
+        <Route path="/test-connection" element={<TestConnection />} />
+        <Route path="/colonies" element={<Colonies />} />
+        <Route path="/properties/:id" element={<PropertyDetails />} />
+        <Route path="/colonies/:id" element={<ColonyDetails />} />
+        <Route path="/plots/:id" element={<PlotDetails />} />
+      </Route>
+
+      {/* Protected Routes */}
+      {isAuthenticated ? (
+        <Route element={<MainLayout />}>
+          <Route path="/my-bookings" element={<MyBookings />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/referral" element={<Referral />} />
+          <Route path="/notifications" element={<Notifications />} />
+        </Route>
+      ) : null}
+
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </AuthChecker>
+  )
+}
+
+export default App
