@@ -75,7 +75,9 @@ const PropertyManagement = () => {
     registry: null,
     legalDoc: null,
     moreImages: [],
-    agreeTerms: false
+    agreeTerms: false,
+    roads: [],
+    parks: []
   })
 
   const steps = [
@@ -103,6 +105,9 @@ const PropertyManagement = () => {
     'Air-Cond', 'Cooking Allowed', 'Near KTM/LRT',
     'Washing Machine', 'Internet'
   ]
+
+  const [newRoad, setNewRoad] = useState({ name: '', lengthFt: '', widthFt: '' })
+  const [newPark, setNewPark] = useState({ name: '', lengthFt: '', widthFt: '' })
 
   useEffect(() => {
     fetchProperties()
@@ -169,6 +174,15 @@ const PropertyManagement = () => {
     }
   }
 
+  const handleColonySelect = (colonyId) => {
+    const selectedColony = colonies.find((colony) => colony._id === colonyId)
+    setFormData((prev) => ({
+      ...prev,
+      colonyId,
+      name: selectedColony?.name || ''
+    }))
+  }
+
   const openAddDialog = () => {
     setActiveStep(0)
     setFormData({
@@ -189,7 +203,9 @@ const PropertyManagement = () => {
       registry: null,
       legalDoc: null,
       moreImages: [],
-      agreeTerms: false
+      agreeTerms: false,
+      roads: [],
+      parks: []
     })
     setAddDialogOpen(true)
   }
@@ -213,12 +229,6 @@ const PropertyManagement = () => {
       case 0:
         if (!formData.category || !formData.colonyId) {
           toast.error('Please select category and colony')
-          return false
-        }
-        break
-      case 1:
-        if (!formData.name) {
-          toast.error('Please enter property name')
           return false
         }
         break
@@ -246,7 +256,7 @@ const PropertyManagement = () => {
       const payload = new FormData()
       
       Object.keys(formData).forEach(key => {
-        if (key === 'facilities' || key === 'amenities') {
+        if (['facilities', 'amenities', 'roads', 'parks'].includes(key)) {
           payload.append(key, JSON.stringify(formData[key]))
         } else if (key === 'moreImages') {
           formData[key].forEach(file => {
@@ -322,10 +332,38 @@ const PropertyManagement = () => {
       registry: null,
       legalDoc: null,
       moreImages: [],
-      agreeTerms: false
+      agreeTerms: false,
+      roads: [],
+      parks: []
     })
     closeAddDialog()
     fetchProperties()
+  }
+
+  const addRoad = () => {
+    if (newRoad.name && newRoad.lengthFt && newRoad.widthFt) {
+      setFormData({ ...formData, roads: [...formData.roads, { ...newRoad }] })
+      setNewRoad({ name: '', lengthFt: '', widthFt: '' })
+    } else {
+      toast.error('Please fill all road fields')
+    }
+  }
+
+  const removeRoad = (index) => {
+    setFormData({ ...formData, roads: formData.roads.filter((_, i) => i !== index) })
+  }
+
+  const addPark = () => {
+    if (newPark.name && newPark.lengthFt && newPark.widthFt) {
+      setFormData({ ...formData, parks: [...formData.parks, { ...newPark }] })
+      setNewPark({ name: '', lengthFt: '', widthFt: '' })
+    } else {
+      toast.error('Please fill all park fields')
+    }
+  }
+
+  const removePark = (index) => {
+    setFormData({ ...formData, parks: formData.parks.filter((_, i) => i !== index) })
   }
 
   const renderStepContent = () => {
@@ -372,7 +410,7 @@ const PropertyManagement = () => {
               fullWidth
               select
               value={formData.colonyId}
-              onChange={(e) => setFormData({ ...formData, colonyId: e.target.value })}
+              onChange={(e) => handleColonySelect(e.target.value)}
               placeholder="-- Select Colony --"
             >
               <MenuItem value="">-- Select Colony --</MenuItem>
@@ -392,15 +430,6 @@ const PropertyManagement = () => {
               Property Details
             </Typography>
             
-            <TextField
-              fullWidth
-              label="Property Name*"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="Enter Property Name"
-              sx={{ mb: 4 }}
-            />
-
             <Typography variant="h6" fontWeight="bold" mb={2}>
               What are the facilities?
             </Typography>
@@ -460,6 +489,110 @@ const PropertyManagement = () => {
                 />
               ))}
             </Box>
+
+            <Typography variant="h6" fontWeight="bold" mt={4} mb={2}>
+              Road Details
+            </Typography>
+            <Grid container spacing={2} mb={2}>
+              <Grid item xs={4}>
+                <TextField
+                  fullWidth
+                  label="Road Name"
+                  value={newRoad.name}
+                  onChange={(e) => setNewRoad({ ...newRoad, name: e.target.value })}
+                  placeholder="Main Road"
+                />
+              </Grid>
+              <Grid item xs={4}>
+                <TextField
+                  fullWidth
+                  type="number"
+                  label="Length (ft)"
+                  value={newRoad.lengthFt}
+                  onChange={(e) => setNewRoad({ ...newRoad, lengthFt: e.target.value })}
+                />
+              </Grid>
+              <Grid item xs={4}>
+                <Box display="flex" gap={1}>
+                  <TextField
+                    fullWidth
+                    type="number"
+                    label="Width (ft)"
+                    value={newRoad.widthFt}
+                    onChange={(e) => setNewRoad({ ...newRoad, widthFt: e.target.value })}
+                  />
+                  <Button variant="contained" onClick={addRoad} sx={{ minWidth: 80 }}>
+                    Add
+                  </Button>
+                </Box>
+              </Grid>
+            </Grid>
+            {formData.roads.length > 0 && (
+              <Box display="flex" flexDirection="column" gap={1} mb={3}>
+                {formData.roads.map((road, index) => (
+                  <Paper key={index} sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography>
+                      <strong>{road.name}</strong>: {road.lengthFt} ft × {road.widthFt} ft = {((road.lengthFt * road.widthFt) / 9).toFixed(2)} Gaj
+                    </Typography>
+                    <IconButton size="small" color="error" onClick={() => removeRoad(index)}>
+                      <Delete />
+                    </IconButton>
+                  </Paper>
+                ))}
+              </Box>
+            )}
+
+            <Typography variant="h6" fontWeight="bold" mt={4} mb={2}>
+              Park / Amenity Area
+            </Typography>
+            <Grid container spacing={2} mb={2}>
+              <Grid item xs={4}>
+                <TextField
+                  fullWidth
+                  label="Park Name"
+                  value={newPark.name}
+                  onChange={(e) => setNewPark({ ...newPark, name: e.target.value })}
+                  placeholder="Central Park"
+                />
+              </Grid>
+              <Grid item xs={4}>
+                <TextField
+                  fullWidth
+                  type="number"
+                  label="Length (ft)"
+                  value={newPark.lengthFt}
+                  onChange={(e) => setNewPark({ ...newPark, lengthFt: e.target.value })}
+                />
+              </Grid>
+              <Grid item xs={4}>
+                <Box display="flex" gap={1}>
+                  <TextField
+                    fullWidth
+                    type="number"
+                    label="Width (ft)"
+                    value={newPark.widthFt}
+                    onChange={(e) => setNewPark({ ...newPark, widthFt: e.target.value })}
+                  />
+                  <Button variant="contained" onClick={addPark} sx={{ minWidth: 80 }}>
+                    Add
+                  </Button>
+                </Box>
+              </Grid>
+            </Grid>
+            {formData.parks.length > 0 && (
+              <Box display="flex" flexDirection="column" gap={1}>
+                {formData.parks.map((park, index) => (
+                  <Paper key={index} sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography>
+                      <strong>{park.name}</strong>: {park.lengthFt} ft × {park.widthFt} ft = {((park.lengthFt * park.widthFt) / 9).toFixed(2)} Gaj
+                    </Typography>
+                    <IconButton size="small" color="error" onClick={() => removePark(index)}>
+                      <Delete />
+                    </IconButton>
+                  </Paper>
+                ))}
+              </Box>
+            )}
           </Box>
         )
 

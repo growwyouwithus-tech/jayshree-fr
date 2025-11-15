@@ -62,6 +62,7 @@ const PlotManagement = () => {
     rightSide: '',
     areaGaj: '',
     pricePerGaj: '',
+    totalPrice: '',
     facing: '',
     status: 'available',
   })
@@ -69,6 +70,73 @@ const PlotManagement = () => {
   const toNumber = (value) => {
     const num = Number(value)
     return Number.isFinite(num) ? num : 0
+  }
+
+  const resolveColonyId = (colonyRef) => {
+    if (!colonyRef) return ''
+    if (typeof colonyRef === 'string') return colonyRef
+    if (typeof colonyRef === 'object') {
+      if (colonyRef._id) return colonyRef._id
+      if (colonyRef.id) return colonyRef.id
+    }
+    return ''
+  }
+
+  const getColonyFromState = (colonyRef) => {
+    const colonyId = resolveColonyId(colonyRef)
+    if (!colonyId) return null
+    return colonies.find((colony) => colony._id === colonyId) || null
+  }
+
+  const getColonySellers = (colonyRef) => {
+    const colonyFromState = getColonyFromState(colonyRef)
+    if (colonyFromState && Array.isArray(colonyFromState.sellers)) {
+      return colonyFromState.sellers
+    }
+
+    if (colonyRef && typeof colonyRef === 'object' && Array.isArray(colonyRef.sellers)) {
+      return colonyRef.sellers
+    }
+
+    return []
+  }
+
+  const formatSellerLabel = (seller) => {
+    if (!seller) return 'Seller'
+    const name = seller.name || seller.fullName || seller.company || 'Seller'
+    const phone = seller.mobile || seller.phone || seller.contact || seller.email || ''
+    return phone ? `${name} (${phone})` : name
+  }
+
+  const renderSellerInfoSection = (colonyRef) => {
+    if (!colonyRef) return null
+
+    const sellers = getColonySellers(colonyRef)
+
+    return (
+      <Box sx={{ p: 2, bgcolor: '#f9fafb', borderRadius: 1, border: '1px solid #ececec' }}>
+        <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>
+          Colony Sellers / Owners
+        </Typography>
+        {sellers.length ? (
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+            {sellers.map((seller, index) => (
+              <Chip
+                key={seller?._id || seller?.id || `${seller?.name || 'seller'}-${index}`}
+                label={formatSellerLabel(seller)}
+                size="small"
+                variant="outlined"
+                color="primary"
+              />
+            ))}
+          </Box>
+        ) : (
+          <Typography variant="body2" color="text.secondary">
+            No sellers added for this colony yet.
+          </Typography>
+        )}
+      </Box>
+    )
   }
 
   const gajToSqFt = (gaj) => toNumber(gaj) * 9
@@ -90,6 +158,22 @@ const PlotManagement = () => {
     return Math.round(num * 9 * 100) / 100
   }
 
+  const isNumericInput = (value) => value !== '' && !Number.isNaN(Number(value))
+
+  const calculateTotalPriceFromArea = (areaGaj, pricePerGaj) => {
+    if (!isNumericInput(areaGaj) || !isNumericInput(pricePerGaj)) return ''
+    const total = Number(areaGaj) * Number(pricePerGaj)
+    return Number.isFinite(total) ? total.toString() : ''
+  }
+
+  const calculatePricePerGajFromTotal = (totalPrice, areaGaj) => {
+    if (!isNumericInput(totalPrice) || !isNumericInput(areaGaj) || Number(areaGaj) === 0) return ''
+    const price = Number(totalPrice) / Number(areaGaj)
+    if (!Number.isFinite(price)) return ''
+    const formatted = price.toFixed(2)
+    return formatted.endsWith('.00') ? parseInt(formatted, 10).toString() : formatted
+  }
+
   const normalizePlotFromApi = (plot) => {
     const colonyRef = plot.colony || plot.colonyId
     return {
@@ -104,7 +188,9 @@ const PlotManagement = () => {
   const buildPlotPayload = () => {
     const area = gajToSqFt(newPlot.areaGaj)
     const pricePerSqFt = pricePerGajToSqFt(newPlot.pricePerGaj)
-    const totalPrice = Math.round(area * pricePerSqFt)
+    const totalPrice = newPlot.totalPrice
+      ? Number(newPlot.totalPrice)
+      : Math.round(area * pricePerSqFt)
 
     return {
       plotNumber: newPlot.plotNo,
@@ -172,7 +258,7 @@ const PlotManagement = () => {
   const openAddDialog = () => setAddDialogOpen(true)
   const closeAddDialog = () => {
     setAddDialogOpen(false)
-    setNewPlot({ colonyId: '', plotNo: '', frontSide: '', backSide: '', leftSide: '', rightSide: '', areaGaj: '', pricePerGaj: '', facing: '', status: 'available' })
+    setNewPlot({ colonyId: '', plotNo: '', frontSide: '', backSide: '', leftSide: '', rightSide: '', areaGaj: '', pricePerGaj: '', totalPrice: '', facing: '', status: 'available' })
   }
 
   const openEditDialog = (plot) => {
@@ -187,6 +273,7 @@ const PlotManagement = () => {
       rightSide: plot.sideMeasurements?.right?.toString() || plot.dimensions?.width?.toString() || '',
       areaGaj: plot.areaGaj?.toString() || (plot.area ? sqFtToGaj(plot.area).toString() : ''),
       pricePerGaj: plot.pricePerGaj?.toString() || (plot.pricePerSqFt ? pricePerSqFtToGaj(plot.pricePerSqFt).toString() : ''),
+      totalPrice: plot.totalPrice?.toString() || '',
       facing: plot.facing || '',
       status: plot.status || 'available',
     })
@@ -196,7 +283,7 @@ const PlotManagement = () => {
   const closeEditDialog = () => {
     setEditDialogOpen(false)
     setEditingPlotId(null)
-    setNewPlot({ colonyId: '', plotNo: '', frontSide: '', backSide: '', leftSide: '', rightSide: '', areaGaj: '', pricePerGaj: '', facing: '', status: 'available' })
+    setNewPlot({ colonyId: '', plotNo: '', frontSide: '', backSide: '', leftSide: '', rightSide: '', areaGaj: '', pricePerGaj: '', totalPrice: '', facing: '', status: 'available' })
   }
 
   // Calculate area using the formula: ((front + back) / 2) * ((left + right) / 2) / 9
@@ -210,11 +297,38 @@ const PlotManagement = () => {
   }
 
   const handleSideMeasurementChange = (side, value) => {
-    const updated = { ...newPlot, [side]: value }
-    const calculatedArea = calculateArea(updated.frontSide, updated.backSide, updated.leftSide, updated.rightSide)
-    setNewPlot({
-      ...updated,
-      areaGaj: calculatedArea.toString()
+    setNewPlot((prev) => {
+      const updated = { ...prev, [side]: value }
+      const calculatedArea = calculateArea(updated.frontSide, updated.backSide, updated.leftSide, updated.rightSide)
+      const areaGaj = calculatedArea ? calculatedArea.toString() : ''
+      const totalPrice = calculateTotalPriceFromArea(areaGaj, updated.pricePerGaj)
+      return {
+        ...updated,
+        areaGaj,
+        totalPrice: totalPrice || ''
+      }
+    })
+  }
+
+  const updatePricingFromPricePerGaj = (pricePerGaj) => {
+    setNewPlot((prev) => {
+      const totalPrice = calculateTotalPriceFromArea(prev.areaGaj, pricePerGaj)
+      return {
+        ...prev,
+        pricePerGaj,
+        totalPrice: totalPrice || ''
+      }
+    })
+  }
+
+  const updatePricingFromTotal = (totalPrice) => {
+    setNewPlot((prev) => {
+      const pricePerGaj = calculatePricePerGajFromTotal(totalPrice, prev.areaGaj)
+      return {
+        ...prev,
+        totalPrice,
+        pricePerGaj: pricePerGaj || prev.pricePerGaj
+      }
     })
   }
 
@@ -348,6 +462,7 @@ const PlotManagement = () => {
             <TableRow sx={{ bgcolor: '#f5f5f5' }}>
               <TableCell><strong>Plot No</strong></TableCell>
               <TableCell><strong>Colony</strong></TableCell>
+              <TableCell><strong>Sellers / Owners</strong></TableCell>
               <TableCell><strong>Area (Gaj)</strong></TableCell>
               <TableCell><strong>Price/Gaj</strong></TableCell>
               <TableCell><strong>Total Price</strong></TableCell>
@@ -359,7 +474,7 @@ const PlotManagement = () => {
           <TableBody>
             {plots.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
+                <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
                   <Typography color="text.secondary">
                     No plots found for the selected colony.
                   </Typography>
@@ -370,6 +485,30 @@ const PlotManagement = () => {
                 <TableRow key={plot._id} hover>
                   <TableCell>{plot.plotNo}</TableCell>
                   <TableCell>{plot.colonyId?.name}</TableCell>
+                  <TableCell>
+                    {(() => {
+                      const sellers = getColonySellers(plot.colonyId)
+                      if (!sellers.length) {
+                        return (
+                          <Typography variant="body2" color="text.secondary">
+                            No sellers
+                          </Typography>
+                        )
+                      }
+                      return (
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                          {sellers.map((seller, index) => (
+                            <Chip
+                              key={seller?._id || seller?.id || `${seller?.name || 'seller'}-${index}`}
+                              label={seller?.name || 'Seller'}
+                              size="small"
+                              variant="outlined"
+                            />
+                          ))}
+                        </Box>
+                      )
+                    })()}
+                  </TableCell>
                   <TableCell>{plot.areaGaj}</TableCell>
                   <TableCell>₹{plot.pricePerGaj?.toLocaleString()}</TableCell>
                   <TableCell>₹{plot.totalPrice?.toLocaleString()}</TableCell>
@@ -430,6 +569,8 @@ const PlotManagement = () => {
               </Select>
             </FormControl>
 
+            {renderSellerInfoSection(newPlot.colonyId)}
+
             <TextField size="small" label="Plot Number" value={newPlot.plotNo} onChange={(e) => setNewPlot((s) => ({ ...s, plotNo: e.target.value }))} />
             
             {/* Side Measurements */}
@@ -492,7 +633,14 @@ const PlotManagement = () => {
               label="Price per Gaj" 
               type="number" 
               value={newPlot.pricePerGaj} 
-              onChange={(e) => setNewPlot((s) => ({ ...s, pricePerGaj: e.target.value }))} 
+              onChange={(e) => updatePricingFromPricePerGaj(e.target.value)} 
+            />
+            <TextField
+              size="small"
+              label="Total Price"
+              type="number"
+              value={newPlot.totalPrice}
+              onChange={(e) => updatePricingFromTotal(e.target.value)}
             />
             
             <FormControl size="small">
@@ -548,6 +696,8 @@ const PlotManagement = () => {
               </Select>
             </FormControl>
 
+            {renderSellerInfoSection(newPlot.colonyId)}
+
             <TextField size="small" label="Plot Number" value={newPlot.plotNo} onChange={(e) => setNewPlot((s) => ({ ...s, plotNo: e.target.value }))} />
             
             {/* Side Measurements */}
@@ -610,7 +760,14 @@ const PlotManagement = () => {
               label="Price per Gaj" 
               type="number" 
               value={newPlot.pricePerGaj} 
-              onChange={(e) => setNewPlot((s) => ({ ...s, pricePerGaj: e.target.value }))} 
+              onChange={(e) => updatePricingFromPricePerGaj(e.target.value)} 
+            />
+            <TextField
+              size="small"
+              label="Total Price"
+              type="number"
+              value={newPlot.totalPrice}
+              onChange={(e) => updatePricingFromTotal(e.target.value)}
             />
             
             <FormControl size="small">

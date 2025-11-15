@@ -26,7 +26,6 @@ import toast from 'react-hot-toast'
 
 const ColonyManagement = () => {
   const [colonies, setColonies] = useState([])
-  const [cities, setCities] = useState([])
   const [loading, setLoading] = useState(true)
   const [openDialog, setOpenDialog] = useState(false)
   const [editMode, setEditMode] = useState(false)
@@ -35,19 +34,15 @@ const ColonyManagement = () => {
     name: '',
     description: '',
     plotPrefix: '',
-    cityId: '',
     address: '',
     purchasePrice: '',
     sellers: [], // Changed to array for multiple sellers
-    totalLandAreaGaj: '',
-    expectedRevenue: '',
     sideMeasurements: {
       front: '',
       back: '',
       left: '',
       right: ''
     },
-    facilities: [],
     location: {
       address: '',
       city: '',
@@ -61,51 +56,29 @@ const ColonyManagement = () => {
     latitude: '',
     longitude: '',
     layoutUrl: '',
-    roads: [],
-    parks: [],
-    dynamicAmenities: [],
     basePricePerGaj: '',
-    amenities: '',
     status: 'planning'
   })
   
-  const [newFacility, setNewFacility] = useState('')
-  const [newRoad, setNewRoad] = useState({ name: '', lengthFt: '', widthFt: '' })
-  const [newPark, setNewPark] = useState({ name: '', lengthFt: '', widthFt: '' })
-  const [newAmenity, setNewAmenity] = useState({ name: '', lengthFt: '', widthFt: '' })
   const [newSeller, setNewSeller] = useState({ name: '', address: '', mobile: '' })
 
   const SQFT_PER_GAJ = 9
 
   useEffect(() => {
     fetchColonies()
-    fetchCities()
   }, [])
-
-  const fetchCities = async () => {
-    try {
-      const { data } = await axios.get('/cities')
-      setCities(data?.data || [])
-    } catch (error) {
-      console.error('Failed to fetch cities:', error)
-      toast.error('Failed to fetch cities')
-    }
-  }
 
   const normalizeColony = (colony) => {
     const totalLandAreaGaj = colony.totalLandAreaGaj ?? (typeof colony.totalArea === 'number' ? Math.round(colony.totalArea / SQFT_PER_GAJ) : null)
     const totalPlots = colony.totalPlots ?? colony.plotStats?.total ?? 0
     const saleablePlots = colony.saleablePlots ?? colony.availablePlots ?? colony.plotStats?.saleable ?? 0
     const ratePerGaj = colony.basePricePerGaj ?? (typeof colony.pricePerSqFt === 'number' ? Math.round(colony.pricePerSqFt * SQFT_PER_GAJ) : null)
-    const expectedRevenue = colony.expectedRevenue ?? (ratePerGaj && totalLandAreaGaj ? ratePerGaj * totalLandAreaGaj : null)
-
     return {
       ...colony,
       totalLandAreaGaj,
       totalPlots,
       saleablePlots,
       ratePerGaj,
-      expectedRevenue,
       sellerDetails: Array.isArray(colony.sellers) && colony.sellers.length > 0
         ? colony.sellers
         : colony.createdBy
@@ -118,8 +91,23 @@ const ColonyManagement = () => {
     try {
       setLoading(true)
       const { data } = await axios.get('/colonies')
-      const rawColonies = data?.data?.colonies || []
-      setColonies(rawColonies.map(normalizeColony))
+      const rawColonies = data?.data?.colonies || [];
+      console.log('Raw colony data from API:', rawColonies);
+
+      const coloniesWithPlotCounts = await Promise.all(
+        rawColonies.map(async (colony) => {
+          try {
+            const plotData = await axios.get(`/plots`, { params: { colony: colony._id, limit: 1 } });
+            const totalPlots = plotData.data?.data?.pagination?.total ?? 0;
+            return normalizeColony({ ...colony, totalPlots });
+          } catch (plotError) {
+            console.error(`Failed to fetch plot count for colony ${colony._id}:`, plotError);
+            return normalizeColony(colony); // Return colony without plot count on error
+          }
+        })
+      );
+
+      setColonies(coloniesWithPlotCounts);
       setLoading(false)
     } catch (error) {
       console.error('Failed to fetch colonies:', error)
@@ -136,7 +124,6 @@ const ColonyManagement = () => {
         name: colony.name,
         description: colony.description || '',
         plotPrefix: colony.plotPrefix || '',
-        cityId: colony.city?._id || '',
         address: colony.address || colony.location?.address || '',
         purchasePrice: colony.purchasePrice || '',
         sellers: colony.sellers || (colony.sellerName ? [{ 
@@ -144,19 +131,12 @@ const ColonyManagement = () => {
           address: colony.sellerAddress || '', 
           mobile: colony.sellerMobile || ''
         }] : []),
-        totalLandAreaGaj: colony.totalLandAreaGaj || '',
-        expectedRevenue: colony.expectedRevenue || '',
         sideMeasurements: colony.sideMeasurements || { front: '', back: '', left: '', right: '' },
-        facilities: colony.facilities || [],
         location: colony.location || { address: '', city: '', state: '', pincode: '', coordinates: { lat: '', lng: '' } },
         latitude: colony.coordinates?.latitude ?? colony.location?.coordinates?.lat ?? '',
         longitude: colony.coordinates?.longitude ?? colony.location?.coordinates?.lng ?? '',
         layoutUrl: colony.layoutUrl || '',
-        roads: colony.roads || [],
-        parks: colony.parks || [],
-        dynamicAmenities: colony.dynamicAmenities || [],
         basePricePerGaj: colony.basePricePerGaj,
-        amenities: Array.isArray(colony.amenities) ? colony.amenities.join(', ') : colony.amenities || '',
         status: colony.status
       })
     } else {
@@ -166,23 +146,15 @@ const ColonyManagement = () => {
         name: '',
         description: '',
         plotPrefix: '',
-        cityId: '',
         address: '',
         purchasePrice: '',
         sellers: [],
-        totalLandAreaGaj: '',
-        expectedRevenue: '',
         sideMeasurements: { front: '', back: '', left: '', right: '' },
-        facilities: [],
         location: { address: '', city: '', state: '', pincode: '', coordinates: { lat: '', lng: '' } },
         latitude: '',
         longitude: '',
         layoutUrl: '',
-        roads: [],
-        parks: [],
-        dynamicAmenities: [],
         basePricePerGaj: '',
-        amenities: '',
         status: 'planning'
       })
     }
@@ -194,47 +166,6 @@ const ColonyManagement = () => {
     setCurrentColony(null)
     // Reset new seller form
     setNewSeller({ name: '', address: '', mobile: '' })
-  }
-  
-  // Helper functions for dynamic arrays
-  const addFacility = () => {
-    if (newFacility.trim()) {
-      setFormData({ ...formData, facilities: [...formData.facilities, newFacility.trim()] })
-      setNewFacility('')
-    }
-  }
-  
-  const removeFacility = (index) => {
-    setFormData({ ...formData, facilities: formData.facilities.filter((_, i) => i !== index) })
-  }
-  
-  const addRoad = () => {
-    if (newRoad.name && newRoad.lengthFt && newRoad.widthFt) {
-      setFormData({ ...formData, roads: [...formData.roads, { ...newRoad }] })
-      setNewRoad({ name: '', lengthFt: '', widthFt: '' })
-    }
-  }
-  
-  const removeRoad = (index) => {
-    setFormData({ ...formData, roads: formData.roads.filter((_, i) => i !== index) })
-  }
-  
-  const addPark = () => {
-    if (newPark.name && newPark.lengthFt && newPark.widthFt) {
-      setFormData({ ...formData, parks: [...formData.parks, { ...newPark }] })
-      setNewPark({ name: '', lengthFt: '', widthFt: '' })
-    }
-  }
-  
-  const removePark = (index) => {
-    setFormData({ ...formData, parks: formData.parks.filter((_, i) => i !== index) })
-  }
-  
-  const addDynamicAmenity = () => {
-    if (newAmenity.name && newAmenity.lengthFt && newAmenity.widthFt) {
-      setFormData({ ...formData, dynamicAmenities: [...formData.dynamicAmenities, { ...newAmenity }] })
-      setNewAmenity({ name: '', lengthFt: '', widthFt: '' })
-    }
   }
   
   // Seller management functions
@@ -251,10 +182,6 @@ const ColonyManagement = () => {
     setFormData({ ...formData, sellers: formData.sellers.filter((_, i) => i !== index) })
   }
   
-  const removeDynamicAmenity = (index) => {
-    setFormData({ ...formData, dynamicAmenities: formData.dynamicAmenities.filter((_, i) => i !== index) })
-  }
-  
   const calculateColonyArea = () => {
     const { front, back, left, right } = formData.sideMeasurements
     if (front && back && left && right) {
@@ -269,23 +196,18 @@ const ColonyManagement = () => {
 
   const handleSubmit = async () => {
     try {
-      if (!formData.cityId) {
-        toast.error('Please select a city')
-        return
-      }
-
       if (!formData.address) {
         toast.error('Address is required')
         return
       }
 
-      const totalAreaSqFt = formData.totalLandAreaGaj ? Number(formData.totalLandAreaGaj) * SQFT_PER_GAJ : undefined
+      const colonyArea = calculateColonyArea()
+      const totalAreaSqFt = colonyArea ? Number(colonyArea.areaGaj) * SQFT_PER_GAJ : undefined
       const pricePerSqFt = formData.basePricePerGaj ? Number(formData.basePricePerGaj) / SQFT_PER_GAJ : undefined
 
       const payload = {
         name: formData.name,
         description: formData.description,
-        city: formData.cityId,
         address: formData.address,
         plotPrefix: formData.plotPrefix,
         purchasePrice: formData.purchasePrice,
@@ -293,12 +215,7 @@ const ColonyManagement = () => {
         totalArea: totalAreaSqFt,
         pricePerSqFt,
         layoutUrl: formData.layoutUrl,
-        roads: formData.roads,
-        parks: formData.parks,
-        dynamicAmenities: formData.dynamicAmenities,
-        facilities: formData.facilities,
         status: formData.status,
-        amenities: formData.amenities.split(',').map(a => a.trim()).filter(Boolean),
         coordinates: {
           latitude: formData.latitude ? Number(formData.latitude) : undefined,
           longitude: formData.longitude ? Number(formData.longitude) : undefined,
@@ -374,9 +291,8 @@ const ColonyManagement = () => {
             <TableRow>
               <TableCell><strong>Colony</strong></TableCell>
               <TableCell><strong>Total Land (Gaj)</strong></TableCell>
-              <TableCell><strong>Saleable</strong></TableCell>
+              <TableCell><strong>plots</strong></TableCell>
               <TableCell><strong>Rate / Gaj</strong></TableCell>
-              <TableCell><strong>Expected Revenue</strong></TableCell>
               <TableCell><strong>Seller</strong></TableCell>
               <TableCell><strong>Status</strong></TableCell>
               <TableCell align="right"><strong>Action</strong></TableCell>
@@ -401,7 +317,6 @@ const ColonyManagement = () => {
                   <TableCell>{colony.totalLandAreaGaj ? colony.totalLandAreaGaj.toLocaleString('en-IN') : '-'}</TableCell>
                   <TableCell>{colony.totalPlots ?? '-'}</TableCell>
                   <TableCell>₹{colony.ratePerGaj ? colony.ratePerGaj.toLocaleString('en-IN') : '-'}</TableCell>
-                  <TableCell>₹{colony.expectedRevenue ? colony.expectedRevenue.toLocaleString('en-IN') : '-'}</TableCell>
                   <TableCell>
                     {colony.sellerDetails && colony.sellerDetails.length > 0 ? (
                       <Box>
@@ -452,21 +367,6 @@ const ColonyManagement = () => {
         <DialogTitle>{editMode ? 'Edit Colony' : 'Add New Colony'}</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                select
-                label="City"
-                value={formData.cityId}
-                onChange={(e) => setFormData({ ...formData, cityId: e.target.value })}
-                required
-              >
-                <option value="">Select City</option>
-                {cities.map((city) => (
-                  <option key={city._id} value={city._id}>{city.name}</option>
-                ))}
-              </TextField>
-            </Grid>
 
             <Grid item xs={12}>
               <TextField
@@ -517,10 +417,10 @@ const ColonyManagement = () => {
             <Grid item xs={6}>
               <TextField
                 fullWidth
-                label="Total Land Area (Gaj)"
-                type="number"
-                value={formData.totalLandAreaGaj}
-                onChange={(e) => setFormData({ ...formData, totalLandAreaGaj: e.target.value })}
+                label="Calculated Total Area (Gaj)"
+                value={calculateColonyArea()?.areaGaj || ''}
+                InputProps={{ readOnly: true }}
+                helperText="Area auto-calculated from the side measurements"
               />
             </Grid>
             {/* Multiple Sellers Section */}
@@ -603,17 +503,6 @@ const ColonyManagement = () => {
                 </Grid>
               </Box>
             </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Expected Revenue (₹)"
-                type="number"
-                value={formData.expectedRevenue}
-                onChange={(e) => setFormData({ ...formData, expectedRevenue: e.target.value })}
-                placeholder="Expected total revenue"
-              />
-            </Grid>
-            
             {/* Colony Location */}
             <Grid item xs={12}>
               <Typography variant="subtitle1" fontWeight="bold" mt={2} mb={1}>
@@ -795,215 +684,6 @@ const ColonyManagement = () => {
               </Grid>
             )}
             
-            {/* Facilities */}
-            <Grid item xs={12}>
-              <Typography variant="subtitle1" fontWeight="bold" mt={2} mb={1}>
-                Facilities
-              </Typography>
-            </Grid>
-            <Grid item xs={10}>
-              <TextField
-                fullWidth
-                label="Add Facility"
-                value={newFacility}
-                onChange={(e) => setNewFacility(e.target.value)}
-                placeholder="e.g., Water Supply, Electricity"
-              />
-            </Grid>
-            <Grid item xs={2}>
-              <Button fullWidth variant="contained" onClick={addFacility} sx={{ height: '56px' }}>
-                Add
-              </Button>
-            </Grid>
-            {formData.facilities.length > 0 && (
-              <Grid item xs={12}>
-                <Box display="flex" flexWrap="wrap" gap={1}>
-                  {formData.facilities.map((facility, index) => (
-                    <Chip
-                      key={index}
-                      label={facility}
-                      onDelete={() => removeFacility(index)}
-                      color="primary"
-                    />
-                  ))}
-                </Box>
-              </Grid>
-            )}
-            
-            {/* Roads */}
-            <Grid item xs={12}>
-              <Typography variant="subtitle1" fontWeight="bold" mt={2} mb={1}>
-                Roads
-              </Typography>
-            </Grid>
-            <Grid item xs={4}>
-              <TextField
-                fullWidth
-                label="Road Name"
-                value={newRoad.name}
-                onChange={(e) => setNewRoad({ ...newRoad, name: e.target.value })}
-                placeholder="Road Number 1"
-              />
-            </Grid>
-            <Grid item xs={3}>
-              <TextField
-                fullWidth
-                label="Length (ft)"
-                type="number"
-                value={newRoad.lengthFt}
-                onChange={(e) => setNewRoad({ ...newRoad, lengthFt: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={3}>
-              <TextField
-                fullWidth
-                label="Width (ft)"
-                type="number"
-                value={newRoad.widthFt}
-                onChange={(e) => setNewRoad({ ...newRoad, widthFt: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={2}>
-              <Button fullWidth variant="contained" onClick={addRoad} sx={{ height: '56px' }}>
-                Add
-              </Button>
-            </Grid>
-            {formData.roads.length > 0 && (
-              <Grid item xs={12}>
-                <Box display="flex" flexDirection="column" gap={1}>
-                  {formData.roads.map((road, index) => (
-                    <Paper key={index} sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Typography>
-                        <strong>{road.name}</strong>: {road.lengthFt} ft × {road.widthFt} ft = {((road.lengthFt * road.widthFt) / 9).toFixed(2)} Gaj
-                      </Typography>
-                      <IconButton size="small" color="error" onClick={() => removeRoad(index)}>
-                        <Delete />
-                      </IconButton>
-                    </Paper>
-                  ))}
-                </Box>
-              </Grid>
-            )}
-            
-            {/* Parks */}
-            <Grid item xs={12}>
-              <Typography variant="subtitle1" fontWeight="bold" mt={2} mb={1}>
-                Parks
-              </Typography>
-            </Grid>
-            <Grid item xs={4}>
-              <TextField
-                fullWidth
-                label="Park Name"
-                value={newPark.name}
-                onChange={(e) => setNewPark({ ...newPark, name: e.target.value })}
-                placeholder="Park Number 1"
-              />
-            </Grid>
-            <Grid item xs={3}>
-              <TextField
-                fullWidth
-                label="Length (ft)"
-                type="number"
-                value={newPark.lengthFt}
-                onChange={(e) => setNewPark({ ...newPark, lengthFt: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={3}>
-              <TextField
-                fullWidth
-                label="Width (ft)"
-                type="number"
-                value={newPark.widthFt}
-                onChange={(e) => setNewPark({ ...newPark, widthFt: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={2}>
-              <Button fullWidth variant="contained" onClick={addPark} sx={{ height: '56px' }}>
-                Add
-              </Button>
-            </Grid>
-            {formData.parks.length > 0 && (
-              <Grid item xs={12}>
-                <Box display="flex" flexDirection="column" gap={1}>
-                  {formData.parks.map((park, index) => (
-                    <Paper key={index} sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Typography>
-                        <strong>{park.name}</strong>: {park.lengthFt} ft × {park.widthFt} ft = {((park.lengthFt * park.widthFt) / 9).toFixed(2)} Gaj
-                      </Typography>
-                      <IconButton size="small" color="error" onClick={() => removePark(index)}>
-                        <Delete />
-                      </IconButton>
-                    </Paper>
-                  ))}
-                </Box>
-              </Grid>
-            )}
-            
-            {/* Dynamic Amenities */}
-            <Grid item xs={12}>
-              <Typography variant="subtitle1" fontWeight="bold" mt={2} mb={1}>
-                Amenities (Temple, School, etc.)
-              </Typography>
-            </Grid>
-            <Grid item xs={4}>
-              <TextField
-                fullWidth
-                label="Amenity Name"
-                value={newAmenity.name}
-                onChange={(e) => setNewAmenity({ ...newAmenity, name: e.target.value })}
-                placeholder="Temple, School, etc."
-              />
-            </Grid>
-            <Grid item xs={3}>
-              <TextField
-                fullWidth
-                label="Length (ft)"
-                type="number"
-                value={newAmenity.lengthFt}
-                onChange={(e) => setNewAmenity({ ...newAmenity, lengthFt: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={3}>
-              <TextField
-                fullWidth
-                label="Width (ft)"
-                type="number"
-                value={newAmenity.widthFt}
-                onChange={(e) => setNewAmenity({ ...newAmenity, widthFt: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={2}>
-              <Button fullWidth variant="contained" onClick={addDynamicAmenity} sx={{ height: '56px' }}>
-                Add
-              </Button>
-            </Grid>
-            {formData.dynamicAmenities.length > 0 && (
-              <Grid item xs={12}>
-                <Box display="flex" flexDirection="column" gap={1}>
-                  {formData.dynamicAmenities.map((amenity, index) => (
-                    <Paper key={index} sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Typography>
-                        <strong>{amenity.name}</strong>: {amenity.lengthFt} ft × {amenity.widthFt} ft = {((amenity.lengthFt * amenity.widthFt) / 9).toFixed(2)} Gaj
-                      </Typography>
-                      <IconButton size="small" color="error" onClick={() => removeDynamicAmenity(index)}>
-                        <Delete />
-                      </IconButton>
-                    </Paper>
-                  ))}
-                </Box>
-              </Grid>
-            )}
-            
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Amenities (comma separated)"
-                value={formData.amenities}
-                onChange={(e) => setFormData({ ...formData, amenities: e.target.value })}
-                placeholder="Water Supply, Electricity, Park, Security"
-              />
-            </Grid>
           </Grid>
         </DialogContent>
         <DialogActions>

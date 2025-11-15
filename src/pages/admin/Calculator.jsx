@@ -121,12 +121,12 @@ const Calculator = () => {
   const salableLandArea = Math.max(totalLand - totalNonSalableArea, 0)
 
   const totalPurchaseCost = totalLand * purchaseRate
-  const suggestedSellingPrice = purchaseRate * (1 + desiredProfit / 100)
   const totalRevenue = salableLandArea * sellingPrice
   const netProfit = totalRevenue - totalPurchaseCost
   const profitPercent = totalPurchaseCost > 0 ? (netProfit / totalPurchaseCost) * 100 : 0
 
   const effectivePurchaseCostPerGaj = salableLandArea > 0 ? totalPurchaseCost / salableLandArea : 0
+  const suggestedSellingPrice = effectivePurchaseCostPerGaj * (1 + desiredProfit / 100)
 
   const resetAll = () => {
     setSummaryInputs({

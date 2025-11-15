@@ -8,67 +8,27 @@ import mockApiService from './mockApiService'
  */
 
 // Check if we should use mock data (for development)
-const USE_MOCK_DATA = import.meta.env.VITE_USE_MOCK_DATA === 'true' && import.meta.env.MODE !== 'production'
 
 // Helper function to try real API first, fallback to mock
-const withFallback = async (realApiCall, mockApiCall) => {
-  if (USE_MOCK_DATA) {
-    return mockApiCall()
-  }
-  return realApiCall()
-}
 
 export const apiService = {
   // ============ CITIES ============
   cities: {
-    getAll: () => withFallback(
-      () => api.get('/cities'),
-      () => mockApiService.cities.getAll()
-    ),
-    getById: (id) => withFallback(
-      () => api.get(`/cities/${id}`),
-      () => mockApiService.cities.getById(id)
-    ),
-    create: (data) => withFallback(
-      () => api.post('/cities', data),
-      () => mockApiService.cities.create(data)
-    ),
-    update: (id, data) => withFallback(
-      () => api.put(`/cities/${id}`, data),
-      () => mockApiService.cities.update(id, data)
-    ),
-    delete: (id) => withFallback(
-      () => api.delete(`/cities/${id}`),
-      () => mockApiService.cities.delete(id)
-    )
+    getAll: () => api.get('/cities'),
+    getById: (id) => api.get(`/cities/${id}`),
+    create: (data) => api.post('/cities', data),
+    update: (id, data) => api.put(`/cities/${id}`, data),
+    delete: (id) => api.delete(`/cities/${id}`)
   },
 
   // ============ AREAS ============
   areas: {
-    getAll: () => withFallback(
-      () => api.get('/areas'),
-      () => mockApiService.areas.getAll()
-    ),
-    getById: (id) => withFallback(
-      () => api.get(`/areas/${id}`),
-      () => mockApiService.areas.getById(id)
-    ),
-    getByCity: (cityId) => withFallback(
-      () => api.get(`/areas?cityId=${cityId}`),
-      () => mockApiService.areas.getByCity(cityId)
-    ),
-    create: (data) => withFallback(
-      () => api.post('/areas', data),
-      () => mockApiService.areas.create(data)
-    ),
-    update: (id, data) => withFallback(
-      () => api.put(`/areas/${id}`, data),
-      () => mockApiService.areas.update(id, data)
-    ),
-    delete: (id) => withFallback(
-      () => api.delete(`/areas/${id}`),
-      () => mockApiService.areas.delete(id)
-    )
+    getAll: () => api.get('/areas'),
+    getById: (id) => api.get(`/areas/${id}`),
+    getByCity: (cityId) => api.get(`/areas?cityId=${cityId}`),
+    create: (data) => api.post('/areas', data),
+    update: (id, data) => api.put(`/areas/${id}`, data),
+    delete: (id) => api.delete(`/areas/${id}`)
   },
 
   // ============ COLONIES ============
@@ -94,90 +54,36 @@ export const apiService = {
 
   // ============ PROPERTIES ============
   properties: {
-    getAll: (params = {}) => withFallback(
-      () => api.get('/properties', { params }),
-      () => Promise.resolve({ data: { data: [] } })
-    ),
-    getById: (id) => withFallback(
-      () => api.get(`/properties/${id}`),
-      () => Promise.resolve({ data: { data: null } })
-    ),
-    create: (data) => withFallback(
-      () => api.post('/properties', data),
-      () => mockApiService.plots.create(data)
-    ),
-    update: (id, data) => withFallback(
-      () => api.put(`/properties/${id}`, data),
-      () => mockApiService.plots.update(id, data)
-    ),
-    delete: (id) => withFallback(
-      () => api.delete(`/properties/${id}`),
-      () => mockApiService.plots.delete(id)
-    ),
-    uploadImages: (id, formData) => withFallback(
-      () => api.post(`/properties/${id}/images`, formData, {
+    getAll: (params = {}) => api.get('/properties', { params }),
+    getById: (id) => api.get(`/properties/${id}`),
+    create: (data) => api.post('/properties', data),
+    update: (id, data) => api.put(`/properties/${id}`, data),
+    delete: (id) => api.delete(`/properties/${id}`),
+    uploadImages: (id, formData) => api.post(`/properties/${id}/images`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
-      }),
-      () => Promise.resolve({ data: { data: [] } })
-    )
+      })
   },
 
   // ============ USERS ============
   users: {
-    getAll: (params = {}) => withFallback(
-      () => api.get('/users', { params }),
-      () => mockApiService.users.getAll()
-    ),
-    getById: (id) => withFallback(
-      () => api.get(`/users/${id}`),
-      () => mockApiService.users.getById(id)
-    ),
-    create: (data) => withFallback(
-      () => api.post('/users', data),
-      () => mockApiService.users.create(data)
-    ),
-    update: (id, data) => withFallback(
-      () => api.put(`/users/${id}`, data),
-      () => mockApiService.users.update(id, data)
-    ),
-    delete: (id) => withFallback(
-      () => api.delete(`/users/${id}`),
-      () => mockApiService.users.delete(id)
-    ),
-    updateStatus: (id, status) => withFallback(
-      () => api.patch(`/users/${id}/status`, { status }),
-      () => mockApiService.users.update(id, { status })
-    )
+    getAll: (params = {}) => api.get('/users', { params }),
+    getById: (id) => api.get(`/users/${id}`),
+    create: (data) => api.post('/users', data),
+    update: (id, data) => api.put(`/users/${id}`, data),
+    delete: (id) => api.delete(`/users/${id}`),
+    updateStatus: (id, status) => api.patch(`/users/${id}/status`, { status })
   },
 
   // ============ STAFF ============
   staff: {
-    getAll: (params = {}) => withFallback(
-      () => api.get('/staff', { params }),
-      () => mockApiService.staff.getAll()
-    ),
-    getById: (id) => withFallback(
-      () => api.get(`/staff/${id}`),
-      () => mockApiService.staff.getById(id)
-    ),
-    create: (data) => withFallback(
-      () => api.post('/staff', data),
-      () => mockApiService.staff.create(data)
-    ),
-    update: (id, data) => withFallback(
-      () => api.put(`/staff/${id}`, data),
-      () => mockApiService.staff.update(id, data)
-    ),
-    delete: (id) => withFallback(
-      () => api.delete(`/staff/${id}`),
-      () => mockApiService.staff.delete(id)
-    ),
-    uploadProfileImage: (id, formData) => withFallback(
-      () => api.post(`/staff/${id}/profile-image`, formData, {
+    getAll: (params = {}) => api.get('/staff', { params }),
+    getById: (id) => api.get(`/staff/${id}`),
+    create: (data) => api.post('/staff', data),
+    update: (id, data) => api.put(`/staff/${id}`, data),
+    delete: (id) => api.delete(`/staff/${id}`),
+    uploadProfileImage: (id, formData) => api.post(`/staff/${id}/profile-image`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
-      }),
-      () => Promise.resolve({ data: { data: { profileImage: 'https://via.placeholder.com/150' } } })
-    )
+      })
   },
 
   // ============ BOOKINGS ============
@@ -195,26 +101,11 @@ export const apiService = {
 
   // ============ ROLES ============
   roles: {
-    getAll: () => withFallback(
-      () => api.get('/users/roles/all'),
-      () => mockApiService.roles.getAll()
-    ),
-    getById: (id) => withFallback(
-      () => api.get(`/users/roles/${id}`),
-      () => mockApiService.roles.getById(id)
-    ),
-    create: (data) => withFallback(
-      () => api.post('/users/roles', data),
-      () => mockApiService.roles.create(data)
-    ),
-    update: (id, data) => withFallback(
-      () => api.put(`/users/roles/${id}`, data),
-      () => mockApiService.roles.update(id, data)
-    ),
-    delete: (id) => withFallback(
-      () => api.delete(`/users/roles/${id}`),
-      () => mockApiService.roles.delete(id)
-    )
+    getAll: () => api.get('/users/roles/all'),
+    getById: (id) => api.get(`/users/roles/${id}`),
+    create: (data) => api.post('/users/roles', data),
+    update: (id, data) => api.put(`/users/roles/${id}`, data),
+    delete: (id) => api.delete(`/users/roles/${id}`)
   },
 
   // ============ SETTINGS ============
