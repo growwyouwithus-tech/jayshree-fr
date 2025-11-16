@@ -35,6 +35,7 @@ const CitiesManagement = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [formData, setFormData] = useState({
     name: '',
+    state: '',
     tagline: '',
     priority: 0
   })
@@ -62,6 +63,7 @@ const CitiesManagement = () => {
       setCurrentCity(city)
       setFormData({
         name: city.name,
+        state: city.state || '',
         tagline: city.tagline || '',
         priority: city.priority || 0
       })
@@ -70,6 +72,7 @@ const CitiesManagement = () => {
       setCurrentCity(null)
       setFormData({
         name: '',
+        state: '',
         tagline: '',
         priority: 0
       })
@@ -213,6 +216,15 @@ const CitiesManagement = () => {
                 label="City Name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                required
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                fullWidth
+                label="State"
+                value={formData.state}
+                onChange={(e) => setFormData({ ...formData, state: e.target.value })}
                 required
               />
             </Grid>

@@ -22,6 +22,10 @@ import {
   InputLabel,
   FormControl,
   Grid,
+  FormLabel,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
 } from '@mui/material'
 import { Add, Edit, Delete } from '@mui/icons-material'
 import axios from '@/api/axios'
@@ -65,6 +69,7 @@ const PlotManagement = () => {
     totalPrice: '',
     facing: '',
     status: 'available',
+    ownerType: 'owner',
   })
 
   const toNumber = (value) => {
@@ -181,7 +186,8 @@ const PlotManagement = () => {
       colonyId: colonyRef,
       plotNo: plot.plotNo || plot.plotNumber || '',
       areaGaj: plot.areaGaj ?? (plot.area ? sqFtToGaj(plot.area) : ''),
-      pricePerGaj: plot.pricePerGaj ?? (plot.pricePerSqFt ? pricePerSqFtToGaj(plot.pricePerSqFt) : ''),
+      pricePerGaj: plot.pricePerGaj ?? (plot.pricePerSqFt ? pricePerSqFtToGaj(plot.pricePerSqFt) : null),
+      ownerType: plot.ownerType === 'seller' ? 'seller' : 'owner',
     }
   }
 
@@ -200,6 +206,7 @@ const PlotManagement = () => {
       totalPrice,
       facing: newPlot.facing,
       status: newPlot.status,
+      ownerType: newPlot.ownerType,
       dimensions: {
         length: toNumber(newPlot.frontSide),
         width: toNumber(newPlot.leftSide),
@@ -258,7 +265,7 @@ const PlotManagement = () => {
   const openAddDialog = () => setAddDialogOpen(true)
   const closeAddDialog = () => {
     setAddDialogOpen(false)
-    setNewPlot({ colonyId: '', plotNo: '', frontSide: '', backSide: '', leftSide: '', rightSide: '', areaGaj: '', pricePerGaj: '', totalPrice: '', facing: '', status: 'available' })
+    setNewPlot({ colonyId: '', plotNo: '', frontSide: '', backSide: '', leftSide: '', rightSide: '', areaGaj: '', pricePerGaj: '', totalPrice: '', facing: '', status: 'available', ownerType: 'owner' })
   }
 
   const openEditDialog = (plot) => {
@@ -276,6 +283,7 @@ const PlotManagement = () => {
       totalPrice: plot.totalPrice?.toString() || '',
       facing: plot.facing || '',
       status: plot.status || 'available',
+      ownerType: plot.ownerType || 'owner',
     })
     setEditDialogOpen(true)
   }
@@ -283,7 +291,7 @@ const PlotManagement = () => {
   const closeEditDialog = () => {
     setEditDialogOpen(false)
     setEditingPlotId(null)
-    setNewPlot({ colonyId: '', plotNo: '', frontSide: '', backSide: '', leftSide: '', rightSide: '', areaGaj: '', pricePerGaj: '', totalPrice: '', facing: '', status: 'available' })
+    setNewPlot({ colonyId: '', plotNo: '', frontSide: '', backSide: '', leftSide: '', rightSide: '', areaGaj: '', pricePerGaj: '', totalPrice: '', facing: '', status: 'available', ownerType: 'owner' })
   }
 
   // Calculate area using the formula: ((front + back) / 2) * ((left + right) / 2) / 9
@@ -486,28 +494,11 @@ const PlotManagement = () => {
                   <TableCell>{plot.plotNo}</TableCell>
                   <TableCell>{plot.colonyId?.name}</TableCell>
                   <TableCell>
-                    {(() => {
-                      const sellers = getColonySellers(plot.colonyId)
-                      if (!sellers.length) {
-                        return (
-                          <Typography variant="body2" color="text.secondary">
-                            No sellers
-                          </Typography>
-                        )
-                      }
-                      return (
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                          {sellers.map((seller, index) => (
-                            <Chip
-                              key={seller?._id || seller?.id || `${seller?.name || 'seller'}-${index}`}
-                              label={seller?.name || 'Seller'}
-                              size="small"
-                              variant="outlined"
-                            />
-                          ))}
-                        </Box>
-                      )
-                    })()}
+                    {plot.ownerType === 'seller' ? (
+                      <Chip label="Seller" size="small" color="info" />
+                    ) : (
+                      <Chip label="Owner" size="small" />
+                    )}
                   </TableCell>
                   <TableCell>{plot.areaGaj}</TableCell>
                   <TableCell>₹{plot.pricePerGaj?.toLocaleString()}</TableCell>
@@ -570,6 +561,18 @@ const PlotManagement = () => {
             </FormControl>
 
             {renderSellerInfoSection(newPlot.colonyId)}
+
+            <FormControl component="fieldset" sx={{ mt: 1 }}>
+              <FormLabel component="legend">Plot Owner</FormLabel>
+              <RadioGroup
+                row
+                value={newPlot.ownerType}
+                onChange={(e) => setNewPlot((s) => ({ ...s, ownerType: e.target.value }))}
+              >
+                <FormControlLabel value="owner" control={<Radio size="small" />} label="Owner" />
+                <FormControlLabel value="seller" control={<Radio size="small" />} label="Seller" />
+              </RadioGroup>
+            </FormControl>
 
             <TextField size="small" label="Plot Number" value={newPlot.plotNo} onChange={(e) => setNewPlot((s) => ({ ...s, plotNo: e.target.value }))} />
             
@@ -697,6 +700,18 @@ const PlotManagement = () => {
             </FormControl>
 
             {renderSellerInfoSection(newPlot.colonyId)}
+
+            <FormControl component="fieldset" sx={{ mt: 1 }}>
+              <FormLabel component="legend">Plot Owner</FormLabel>
+              <RadioGroup
+                row
+                value={newPlot.ownerType}
+                onChange={(e) => setNewPlot((s) => ({ ...s, ownerType: e.target.value }))}
+              >
+                <FormControlLabel value="owner" control={<Radio size="small" />} label="Owner" />
+                <FormControlLabel value="seller" control={<Radio size="small" />} label="Seller" />
+              </RadioGroup>
+            </FormControl>
 
             <TextField size="small" label="Plot Number" value={newPlot.plotNo} onChange={(e) => setNewPlot((s) => ({ ...s, plotNo: e.target.value }))} />
             

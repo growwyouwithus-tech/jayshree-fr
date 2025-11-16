@@ -1,8 +1,19 @@
 {
-  "name": "digital-colony-frontend",
+  "name": "jayshri",
   "version": "1.0.0",
   "description": "Frontend for Digital Colony Management System",
+  "homepage": "https://github.com/growwyouwithus-tech/jayshree-fr#readme",
+  "bugs": {
+    "url": "https://github.com/growwyouwithus-tech/jayshree-fr/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/growwyouwithus-tech/jayshree-fr.git"
+  },
+  "license": "ISC",
+  "author": "",
   "type": "module",
+  "main": "vite.config.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

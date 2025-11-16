@@ -311,6 +311,9 @@ const ColonyManagement = () => {
                   <TableCell>
                     <Typography variant="body2" fontWeight={600}>{colony.name}</Typography>
                     <Typography variant="caption" color="text.secondary">
+                      {colony.address || colony.location?.address || '-'}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
                       {colony.city?.name || '-'}
                     </Typography>
                   </TableCell>

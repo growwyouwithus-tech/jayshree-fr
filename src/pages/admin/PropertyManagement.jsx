@@ -158,7 +158,7 @@ const PropertyManagement = () => {
   const fetchCities = async () => {
     try {
       const { data } = await axios.get('/cities')
-      setCities(data.data || [])
+      setCities(Array.isArray(data?.data) ? data.data : data?.data?.cities || data?.data?.data || [])
     } catch (error) {
       console.error('Failed to fetch cities')
     }
