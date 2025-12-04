@@ -1,6 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import axios from '../../api/axios'
-import { demoColonies } from '../../data/demoData'
 
 const initialState = {
   colonies: [],
@@ -13,49 +12,39 @@ export const fetchColonies = createAsyncThunk(
   'colony/fetchColonies',
   async (_, { rejectWithValue, getState }) => {
     try {
-      const { auth } = getState()
-      const config = {}
+      const { data } = await axios.get('/colonies')
+      console.log('📦 Colonies API Response:', data)
       
-      // Add auth header if user is authenticated
-      if (auth.token) {
-        config.headers = {
-          'Authorization': `Bearer ${auth.token}`
-        }
+      // Handle different response structures
+      if (data.data?.colonies && Array.isArray(data.data.colonies)) {
+        return data.data.colonies
+      }
+      if (Array.isArray(data.data)) {
+        return data.data
+      }
+      if (Array.isArray(data)) {
+        return data
       }
       
-      const { data } = await axios.get('/colonies', config)
-      console.log('✅ Fetched real colonies from backend:', data.data.colonies.length)
-      return data.data.colonies
+      console.warn('⚠️ Unexpected colonies data structure:', data)
+      return []
     } catch (error) {
-      // Return demo data if backend fails or user not authenticated
-      console.log('Using demo colonies data:', error.response?.status === 401 ? 'Authentication required' : error.message)
-      return demoColonies
+      console.error('❌ Fetch colonies error:', error)
+      // Return empty array on error
+      return []
     }
   }
 )
 
 export const fetchColonyById = createAsyncThunk(
   'colony/fetchColonyById',
-  async (id, { rejectWithValue, getState }) => {
+  async (id, { rejectWithValue }) => {
     try {
-      const { auth } = getState()
-      const config = {}
-      
-      // Add auth header if user is authenticated
-      if (auth.token) {
-        config.headers = {
-          'Authorization': `Bearer ${auth.token}`
-        }
-      }
-      
-      const { data } = await axios.get(`/colonies/${id}`, config)
-      console.log('✅ Fetched real colony from backend:', data.data.colony.name)
-      return data.data.colony
+      const { data } = await axios.get(`/colonies/${id}`)
+      return data.data || data.data.colony || null
     } catch (error) {
-      // Return demo data if backend fails
-      console.log('Using demo colony data:', error.response?.status === 401 ? 'Authentication required' : error.message)
-      const colony = demoColonies.find(c => c._id === id)
-      return colony || demoColonies[0]
+      console.error('Fetch colony error:', error)
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch colony')
     }
   }
 )
@@ -100,3 +89,4 @@ const colonySlice = createSlice({
 
 export const { clearError, setSelectedColony } = colonySlice.actions
 export default colonySlice.reducer
+const IS_PROD = import.meta.env.MODE === 'production'

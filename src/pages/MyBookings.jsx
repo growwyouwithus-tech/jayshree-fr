@@ -1,5 +1,6 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
+import { useNavigate } from 'react-router-dom'
 import {
   Box,
   Container,
@@ -16,14 +17,42 @@ import { Receipt, LocationOn, Home, CalendarToday, Refresh, FilterList } from '@
 import { IconButton, MenuItem, TextField } from '@mui/material'
 import { fetchMyBookings } from '../store/slices/bookingSlice'
 import { format } from 'date-fns'
+import toast from 'react-hot-toast'
 
 const MyBookings = () => {
   const dispatch = useDispatch()
+  const navigate = useNavigate()
   const { bookings, loading } = useSelector((state) => state.booking)
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [sortBy, setSortBy] = useState('newest')
+  const [refreshing, setRefreshing] = useState(false)
 
   useEffect(() => {
     dispatch(fetchMyBookings())
   }, [dispatch])
+
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    try {
+      await dispatch(fetchMyBookings()).unwrap()
+      toast.success('Bookings refreshed')
+    } catch (error) {
+      toast.error('Failed to refresh bookings')
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
+  // Filter and sort bookings
+  const filteredBookings = bookings
+    .filter((booking) => statusFilter === 'all' || booking.status === statusFilter)
+    .sort((a, b) => {
+      if (sortBy === 'newest') {
+        return new Date(b.bookingDate) - new Date(a.bookingDate)
+      } else {
+        return new Date(a.bookingDate) - new Date(b.bookingDate)
+      }
+    })
 
   const getStatusColor = (status) => {
     const colors = {
@@ -47,59 +76,73 @@ const MyBookings = () => {
   }
 
   return (
-    <Box sx={{ bgcolor: '#F5F5F5', minHeight: '100vh' }}>
-      {/* Header - Purple */}
-      <Box sx={{ bgcolor: '#6200EA', color: 'white', p: 2.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Typography variant="h5" fontWeight={600} sx={{ fontSize: '1.4rem' }}>
-          My Bookings
-        </Typography>
-        <IconButton sx={{ color: 'white' }}>
-          <Refresh />
-        </IconButton>
-      </Box>
+    <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', py: 4 }}>
+      <Container maxWidth="lg">
+        {/* Header */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+          <Box>
+            <Typography variant="h4" fontWeight={700} gutterBottom>
+              My Bookings
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              Track and manage your plot bookings
+            </Typography>
+          </Box>
+          <IconButton 
+            onClick={handleRefresh} 
+            disabled={refreshing}
+            sx={{ bgcolor: 'background.paper' }}
+          >
+            <Refresh sx={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />
+          </IconButton>
+        </Box>
 
-      {/* Filters */}
-      <Box sx={{ bgcolor: 'white', p: 2, display: 'flex', gap: 2, borderBottom: '1px solid #E0E0E0' }}>
-        <TextField
-          select
-          size="small"
-          defaultValue="pending"
-          sx={{ 
-            minWidth: 140,
-            '& .MuiOutlinedInput-root': {
-              borderRadius: 2,
-            }
-          }}
-          InputProps={{
-            startAdornment: <FilterList sx={{ mr: 1, color: '#666', fontSize: 20 }} />
-          }}
-        >
-          <MenuItem value="pending">Pending</MenuItem>
-          <MenuItem value="approved">Approved</MenuItem>
-          <MenuItem value="completed">Completed</MenuItem>
-        </TextField>
-        <TextField
-          select
-          size="small"
-          defaultValue="oldest"
-          sx={{ 
-            minWidth: 140,
-            '& .MuiOutlinedInput-root': {
-              borderRadius: 2,
-            }
-          }}
-          InputProps={{
-            startAdornment: <FilterList sx={{ mr: 1, color: '#666', fontSize: 20 }} />
-          }}
-        >
-          <MenuItem value="oldest">Oldest</MenuItem>
-          <MenuItem value="newest">Newest</MenuItem>
-        </TextField>
-      </Box>
+        {/* Filters */}
+        <Card sx={{ mb: 3, p: 2 }}>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} sm={6} md={4}>
+              <TextField
+                select
+                fullWidth
+                label="Status Filter"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                size="small"
+              >
+                <MenuItem value="all">All Bookings</MenuItem>
+                <MenuItem value="pending">Pending</MenuItem>
+                <MenuItem value="approved">Approved</MenuItem>
+                <MenuItem value="payment_pending">Payment Pending</MenuItem>
+                <MenuItem value="payment_partial">Partial Payment</MenuItem>
+                <MenuItem value="completed">Completed</MenuItem>
+                <MenuItem value="cancelled">Cancelled</MenuItem>
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={6} md={4}>
+              <TextField
+                select
+                fullWidth
+                label="Sort By"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                size="small"
+              >
+                <MenuItem value="newest">Newest First</MenuItem>
+                <MenuItem value="oldest">Oldest First</MenuItem>
+              </TextField>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, justifyContent: 'center' }}>
+                <FilterList />
+                <Typography variant="body2" color="text.secondary">
+                  {filteredBookings.length} Booking{filteredBookings.length !== 1 ? 's' : ''}
+                </Typography>
+              </Box>
+            </Grid>
+          </Grid>
+        </Card>
 
-      <Container maxWidth="lg" sx={{ py: 3 }}>
-
-        {bookings.length === 0 ? (
+        {filteredBookings.length === 0 ? (
           <Box sx={{ textAlign: 'center', py: 8, px: 3 }}>
             {/* Illustration Circle */}
             <Box
@@ -114,59 +157,38 @@ const MyBookings = () => {
                 justifyContent: 'center',
               }}
             >
-              <Box
-                sx={{
-                  width: 120,
-                  height: 140,
-                  bgcolor: '#6200EA',
-                  borderRadius: '50% 50% 0 0',
-                  position: 'relative',
-                  display: 'flex',
-                  alignItems: 'flex-end',
-                  justifyContent: 'center',
-                  pb: 2,
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 30,
-                    height: 50,
-                    bgcolor: '#FFA726',
-                    borderRadius: 2,
-                  }}
-                />
-              </Box>
+              <Receipt sx={{ fontSize: 80, color: 'primary.main' }} />
             </Box>
-            <Typography variant="h6" fontWeight={500} gutterBottom sx={{ fontSize: '1.1rem', mb: 1 }}>
-              No Data
+            <Typography variant="h6" fontWeight={600} gutterBottom>
+              No Bookings Found
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              {statusFilter === 'all' 
+                ? "You haven't made any bookings yet"
+                : `No ${statusFilter} bookings found`}
             </Typography>
             <Button 
-              startIcon={<Refresh />}
-              sx={{ 
-                color: '#6200EA',
-                textTransform: 'none',
-                fontWeight: 600,
-                fontSize: '0.95rem'
-              }}
+              variant="contained"
+              onClick={() => navigate('/colonies')}
             >
-              Retry
+              Browse Colonies
             </Button>
           </Box>
         ) : (
           <Grid container spacing={3}>
-            {bookings.map((booking) => (
+            {filteredBookings.map((booking) => (
               <Grid item xs={12} key={booking._id}>
-                <Card>
-                  <CardContent>
+                <Card sx={{ cursor: 'pointer', '&:hover': { boxShadow: 4 } }}>
+                  <CardContent onClick={() => navigate(`/plots/${booking.plotId?._id}`)}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 2 }}>
                       <Box>
                         <Typography variant="h6" fontWeight={600} gutterBottom>
                           Booking #{booking.bookingNumber}
                         </Typography>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
                           <CalendarToday fontSize="small" color="action" />
                           <Typography variant="body2" color="text.secondary">
-                            {format(new Date(booking.bookingDate), 'dd MMM yyyy')}
+                            {format(new Date(booking.bookingDate), 'dd MMM yyyy, hh:mm a')}
                           </Typography>
                         </Box>
                       </Box>
@@ -249,6 +271,31 @@ const MyBookings = () => {
                         </Typography>
                       </>
                     )}
+                    <Divider sx={{ my: 2 }} />
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Button 
+                        variant="outlined" 
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          navigate(`/plots/${booking.plotId?._id}`)
+                        }}
+                      >
+                        View Plot
+                      </Button>
+                      {booking.status === 'payment_pending' && (
+                        <Button 
+                          variant="contained" 
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            toast.info('Payment feature coming soon')
+                          }}
+                        >
+                          Make Payment
+                        </Button>
+                      )}
+                    </Box>
                   </CardContent>
                 </Card>
               </Grid>

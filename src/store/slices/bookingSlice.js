@@ -13,12 +13,12 @@ export const fetchMyBookings = createAsyncThunk(
   'booking/fetchMyBookings',
   async (_, { rejectWithValue }) => {
     try {
-      const { data } = await axios.get('/bookings')
-      return data.data.bookings
+      const { data } = await axios.get('/customer-auth/my-bookings')
+      return data.data.bookings || data.data || []
     } catch (error) {
-      // Return demo data if backend fails
-      console.log('Using demo bookings data')
-      return demoBookings
+      console.error('Fetch bookings error:', error.response?.data || error.message)
+      // Return empty array if error
+      return []
     }
   }
 )

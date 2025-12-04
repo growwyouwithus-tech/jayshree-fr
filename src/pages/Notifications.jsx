@@ -16,7 +16,7 @@ const Notifications = () => {
   return (
     <Box sx={{ bgcolor: '#F5F5F5', minHeight: '100vh' }}>
       {/* Header - Purple */}
-      <Box sx={{ bgcolor: '#6200EA', color: 'white', p: 2 }}>
+      <Box sx={{ bgcolor: 'primary.main', color: 'white', p: 2 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
             <ArrowBack onClick={() => navigate(-1)} sx={{ cursor: 'pointer', fontSize: 24 }} />
@@ -50,7 +50,7 @@ const Notifications = () => {
                 sx={{
                   width: 120,
                   height: 140,
-                  bgcolor: '#6200EA',
+                  bgcolor: 'primary.main',
                   borderRadius: '50% 50% 0 0',
                   position: 'relative',
                   display: 'flex',
@@ -78,7 +78,7 @@ const Notifications = () => {
             <Button
               startIcon={<Refresh />}
               sx={{ 
-                color: '#6200EA',
+                color: 'primary.main',
                 textTransform: 'none',
                 fontWeight: 600,
                 fontSize: '0.95rem'

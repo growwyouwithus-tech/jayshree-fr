@@ -4,7 +4,6 @@ import axios from '../../api/axios'
 const initialState = {
   user: JSON.parse(localStorage.getItem('user')) || null,
   token: localStorage.getItem('token') || null,
-  refreshToken: localStorage.getItem('refreshToken') || null,
   isAuthenticated: !!localStorage.getItem('token'),
   loading: false,
   error: null,
@@ -14,43 +13,24 @@ export const login = createAsyncThunk(
   'auth/login',
   async (credentials, { rejectWithValue }) => {
     try {
-      // Try actual backend login first
-      const { data } = await axios.post('/auth/login', credentials)
-      // Backend returns { data: { user, accessToken, refreshToken } }
-      const user = data.data.user
-      const accessToken = data.data.accessToken
-      const refreshToken = data.data.refreshToken
+      // Use customer-auth endpoint for user app
+      const { data } = await axios.post('/customer-auth/login', credentials)
+      // Backend returns { data: { customer, token } }
+      const user = data.data.customer
+      const token = data.data.token
 
       // Store tokens
-      localStorage.setItem('token', accessToken)
-      if (refreshToken) localStorage.setItem('refreshToken', refreshToken)
+      localStorage.setItem('token', token)
       localStorage.setItem('user', JSON.stringify(user))
 
       return {
         user,
-        token: accessToken,
-        refreshToken,
+        token,
       }
     } catch (error) {
-      // If backend fails, use demo login as fallback
-      console.log('Backend login failed, using demo mode:', error.response?.data?.message || error.message)
-      
-      const demoUser = {
-        _id: 'demo123',
-        name: 'Demo User',
-        email: credentials.email,
-        phone: '9876543210',
-        roleId: { name: 'Buyer' },
-      }
-      const demoToken = 'demo-token-' + Date.now()
-      
-      localStorage.setItem('token', demoToken)
-      localStorage.setItem('user', JSON.stringify(demoUser))
-      
-      return {
-        user: demoUser,
-        token: demoToken,
-      }
+      const errorMessage = error.response?.data?.message || error.message || 'Login failed'
+      console.error('Login error:', errorMessage)
+      return rejectWithValue(errorMessage)
     }
   }
 )
@@ -59,59 +39,23 @@ export const register = createAsyncThunk(
   'auth/register',
   async (userData, { rejectWithValue }) => {
     try {
-      // Demo registration - works without backend
-      if (userData.email && userData.password && userData.name) {
-        const demoUser = {
-          _id: 'demo' + Date.now(),
-          name: userData.name,
-          email: userData.email,
-          phone: userData.phone || '9876543210',
-          roleId: { name: 'Buyer' },
-        }
-        const demoToken = 'demo-token-' + Date.now()
-        
-        localStorage.setItem('token', demoToken)
-        localStorage.setItem('user', JSON.stringify(demoUser))
-        
-        return {
-          user: demoUser,
-          token: demoToken,
-        }
-      }
-      
-      // Try actual backend registration
-      const { data } = await axios.post('/auth/register', userData)
-      const user = data.data.user
-      const accessToken = data.data.accessToken
-      const refreshToken = data.data.refreshToken
+      // Use customer-auth endpoint for user app
+      const { data } = await axios.post('/customer-auth/register', userData)
+      // Backend returns { data: { customer, token } }
+      const user = data.data.customer
+      const token = data.data.token
 
-      localStorage.setItem('token', accessToken)
-      if (refreshToken) localStorage.setItem('refreshToken', refreshToken)
+      localStorage.setItem('token', token)
       localStorage.setItem('user', JSON.stringify(user))
 
       return {
         user,
-        token: accessToken,
-        refreshToken,
+        token,
       }
     } catch (error) {
-      // If backend fails, use demo registration
-      const demoUser = {
-        _id: 'demo' + Date.now(),
-        name: userData.name,
-        email: userData.email,
-        phone: userData.phone || '9876543210',
-        roleId: { name: 'Buyer' },
-      }
-      const demoToken = 'demo-token-' + Date.now()
-      
-      localStorage.setItem('token', demoToken)
-      localStorage.setItem('user', JSON.stringify(demoUser))
-      
-      return {
-        user: demoUser,
-        token: demoToken,
-      }
+      const errorMessage = error.response?.data?.message || error.message || 'Registration failed'
+      console.error('Registration error:', errorMessage)
+      return rejectWithValue(errorMessage)
     }
   }
 )
@@ -119,7 +63,40 @@ export const register = createAsyncThunk(
 export const logout = createAsyncThunk('auth/logout', async () => {
   localStorage.removeItem('token')
   localStorage.removeItem('user')
+  localStorage.removeItem('refreshToken')
 })
+
+// Fetch current user profile
+export const fetchProfile = createAsyncThunk(
+  'auth/fetchProfile',
+  async (_, { rejectWithValue }) => {
+    try {
+      const { data } = await axios.get('/customer-auth/me')
+      const user = data.data
+      localStorage.setItem('user', JSON.stringify(user))
+      return user
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || 'Failed to fetch profile'
+      return rejectWithValue(errorMessage)
+    }
+  }
+)
+
+// Update user profile
+export const updateProfile = createAsyncThunk(
+  'auth/updateProfile',
+  async (profileData, { rejectWithValue }) => {
+    try {
+      const { data } = await axios.put('/customer-auth/profile', profileData)
+      const user = data.data
+      localStorage.setItem('user', JSON.stringify(user))
+      return user
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || 'Failed to update profile'
+      return rejectWithValue(errorMessage)
+    }
+  }
+)
 
 const authSlice = createSlice({
   name: 'auth',
@@ -183,7 +160,32 @@ const authSlice = createSlice({
       .addCase(logout.fulfilled, (state) => {
         state.user = null
         state.token = null
+        state.refreshToken = null
         state.isAuthenticated = false
+      })
+      // Fetch Profile
+      .addCase(fetchProfile.pending, (state) => {
+        state.loading = true
+      })
+      .addCase(fetchProfile.fulfilled, (state, action) => {
+        state.loading = false
+        state.user = action.payload
+      })
+      .addCase(fetchProfile.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload
+      })
+      // Update Profile
+      .addCase(updateProfile.pending, (state) => {
+        state.loading = true
+      })
+      .addCase(updateProfile.fulfilled, (state, action) => {
+        state.loading = false
+        state.user = action.payload
+      })
+      .addCase(updateProfile.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload
       })
   },
 })

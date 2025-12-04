@@ -9,10 +9,24 @@ const AuthLayout = () => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        backgroundImage: 'url(/login.jpg)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        position: 'relative',
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.4)',
+          zIndex: 1,
+        },
       }}
     >
-      <Container maxWidth="sm">
+      <Container maxWidth="sm" sx={{ position: 'relative', zIndex: 2 }}>
         <Outlet />
       </Container>
     </Box>

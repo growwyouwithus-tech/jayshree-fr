@@ -27,6 +27,7 @@ const Register = () => {
     phone: '',
     password: '',
     confirmPassword: '',
+    agentCode: '',
   })
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -61,7 +62,12 @@ const Register = () => {
   }
 
   return (
-    <Card>
+    <Card sx={{ 
+      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+      backdropFilter: 'blur(10px)',
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+      border: '1px solid rgba(255, 255, 255, 0.2)',
+    }}>
       <CardContent sx={{ p: 4 }}>
         <Box sx={{ textAlign: 'center', mb: 3 }}>
           <PersonAdd sx={{ fontSize: 48, color: 'primary.main', mb: 1 }} />
@@ -106,6 +112,18 @@ const Register = () => {
                 value={formData.phone}
                 onChange={handleChange}
                 required
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Agent Code (Optional)"
+                name="agentCode"
+                value={formData.agentCode}
+                onChange={handleChange}
+                placeholder="Enter agent referral code if you have one"
+                helperText="If you were referred by an agent, enter their code here"
               />
             </Grid>
 

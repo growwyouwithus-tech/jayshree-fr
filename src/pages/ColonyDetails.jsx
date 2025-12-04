@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import {
@@ -17,6 +17,7 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText,
+  IconButton,
 } from '@mui/material'
 import {
   LocationOn,
@@ -25,9 +26,17 @@ import {
   Home,
   Landscape,
   AttachMoney,
+  Favorite,
+  FavoriteBorder,
+  CompareArrows,
+  Share,
 } from '@mui/icons-material'
 import { fetchColonyById } from '../store/slices/colonySlice'
 import { fetchPlots } from '../store/slices/plotSlice'
+import { wishlistService, compareService } from '../services/api.service'
+import toast from 'react-hot-toast'
+import ImageGallery from '../components/ImageGallery'
+import GoogleMapEmbed from '../components/GoogleMapEmbed'
 
 const ColonyDetails = () => {
   const { id } = useParams()
@@ -36,15 +45,22 @@ const ColonyDetails = () => {
   const { selectedColony, loading: colonyLoading } = useSelector((state) => state.colony)
   const { plots, loading: plotsLoading } = useSelector((state) => state.plot)
   const { isAuthenticated } = useSelector((state) => state.auth)
+  
+  const [isFavorite, setIsFavorite] = useState(false)
+  const [isInCompare, setIsInCompare] = useState(false)
 
   useEffect(() => {
     dispatch(fetchColonyById(id))
     dispatch(fetchPlots(id))
+    
+    // Check if in wishlist and compare
+    setIsFavorite(wishlistService.has(id))
+    setIsInCompare(compareService.has(id))
   }, [dispatch, id, isAuthenticated]) // Re-fetch when auth changes
 
   // Debug logging
   useEffect(() => {
-    console.log('🏘️ ColonyDetails: Data updated:', {
+    console.log('🏘️ PropertyDetails: Data updated:', {
       colonyId: id,
       isAuthenticated,
       colony: selectedColony ? {
@@ -65,65 +81,104 @@ const ColonyDetails = () => {
 
   const availablePlots = plots.filter((p) => p.status === 'available')
 
+  const handleToggleFavorite = () => {
+    if (isFavorite) {
+      wishlistService.remove(id)
+      setIsFavorite(false)
+      toast.success('Removed from favorites')
+    } else {
+      wishlistService.add(id)
+      setIsFavorite(true)
+      toast.success('Added to favorites')
+    }
+  }
+
+  const handleToggleCompare = () => {
+    if (isInCompare) {
+      compareService.remove(id)
+      setIsInCompare(false)
+      toast.success('Removed from comparison')
+    } else {
+      try {
+        compareService.add(id)
+        setIsInCompare(true)
+        toast.success('Added to comparison')
+      } catch (error) {
+        toast.error(error.message)
+      }
+    }
+  }
+
+  const handleShare = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: selectedColony.name,
+        text: `Check out ${selectedColony.name} on Jayshri Properties`,
+        url: window.location.href,
+      })
+    } else {
+      navigator.clipboard.writeText(window.location.href)
+      toast.success('Link copied to clipboard')
+    }
+  }
+
   return (
     <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', py: 4 }}>
       <Container maxWidth="xl">
-        {/* Back Button */}
-        <Button
-          startIcon={<ArrowBack />}
-          onClick={() => navigate('/colonies')}
-          sx={{ mb: 3 }}
-        >
-          Back to Colonies
-        </Button>
+        {/* Header with Actions */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Button
+            startIcon={<ArrowBack />}
+            onClick={() => navigate('/colonies')}
+          >
+            Back to Colonies
+          </Button>
+          
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <IconButton 
+              onClick={handleToggleFavorite}
+              sx={{ 
+                bgcolor: 'background.paper',
+                boxShadow: 1,
+                '&:hover': { bgcolor: 'background.paper' }
+              }}
+            >
+              {isFavorite ? <Favorite sx={{ color: '#f44336' }} /> : <FavoriteBorder />}
+            </IconButton>
+            <IconButton 
+              onClick={handleToggleCompare}
+              sx={{ 
+                bgcolor: isInCompare ? 'primary.main' : 'background.paper',
+                color: isInCompare ? 'white' : 'inherit',
+                boxShadow: 1,
+                '&:hover': { bgcolor: isInCompare ? 'primary.main' : 'background.paper' }
+              }}
+            >
+              <CompareArrows />
+            </IconButton>
+            <IconButton 
+              onClick={handleShare}
+              sx={{ 
+                bgcolor: 'background.paper',
+                boxShadow: 1,
+                '&:hover': { bgcolor: 'background.paper' }
+              }}
+            >
+              <Share />
+            </IconButton>
+          </Box>
+        </Box>
 
         <Grid container spacing={4}>
           {/* Left Column - Images and Details */}
           <Grid item xs={12} md={8}>
-            {/* Main Image */}
-            <Card sx={{ mb: 3 }}>
-              <CardMedia
-                component="img"
-                height="400"
-                image={selectedColony.mapImages?.[0]?.url || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800&h=600&fit=crop'}
-                alt={selectedColony.name}
-                sx={{ objectFit: 'cover' }}
-              />
-            </Card>
+            {/* Image Gallery with Swiper */}
+            <ImageGallery 
+              images={selectedColony.mapImages || []} 
+              title={selectedColony.name}
+            />
 
-            {/* Additional Images Gallery */}
-            {selectedColony.mapImages && selectedColony.mapImages.length > 1 && (
-              <Card sx={{ mb: 3 }}>
-                <CardContent>
-                  <Typography variant="h6" fontWeight={600} gutterBottom>
-                    Gallery
-                  </Typography>
-                  <Grid container spacing={2}>
-                    {selectedColony.mapImages.slice(1).map((image, index) => (
-                      <Grid item xs={6} sm={4} key={index}>
-                        <CardMedia
-                          component="img"
-                          height="120"
-                          image={image.url}
-                          alt={image.caption || `${selectedColony.name} - Image ${index + 2}`}
-                          sx={{ 
-                            objectFit: 'cover',
-                            borderRadius: 1,
-                            cursor: 'pointer',
-                            '&:hover': {
-                              transform: 'scale(1.05)',
-                              transition: 'transform 0.3s ease'
-                            }
-                          }}
-                        />
-                      </Grid>
-                    ))}
-                  </Grid>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Colony Info */}
+            {/* Property Info */}
             <Card sx={{ mb: 3 }}>
               <CardContent>
                 <Typography variant="h4" fontWeight={700} gutterBottom>
@@ -163,7 +218,7 @@ const ColonyDetails = () => {
                   Description
                 </Typography>
                 <Typography variant="body1" color="text.secondary" paragraph>
-                  {selectedColony.description || 'Premium residential colony with modern amenities and excellent connectivity.'}
+                  {selectedColony.description || 'Premium residential property with modern amenities and excellent connectivity.'}
                 </Typography>
 
                 <Divider sx={{ my: 3 }} />
@@ -202,6 +257,12 @@ const ColonyDetails = () => {
                 )}
               </CardContent>
             </Card>
+
+            {/* Google Maps */}
+            <GoogleMapEmbed 
+              location={selectedColony.location} 
+              name={selectedColony.name}
+            />
           </Grid>
 
           {/* Right Column - Quick Info */}

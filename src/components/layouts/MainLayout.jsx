@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router-dom'
 import { Box } from '@mui/material'
+import Header from '../Header'
 import BottomNav from '../BottomNav'
 
 const MainLayout = () => {
@@ -11,6 +12,7 @@ const MainLayout = () => {
       maxWidth: '100vw',
       overflow: 'hidden'
     }}>
+      <Header />
       <Box component="main" sx={{ flexGrow: 1, bgcolor: 'background.default', pb: 7 }}>
         <Outlet />
       </Box>

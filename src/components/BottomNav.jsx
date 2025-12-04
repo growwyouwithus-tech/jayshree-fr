@@ -1,15 +1,19 @@
 import { useLocation, useNavigate } from 'react-router-dom'
+import { useSelector } from 'react-redux'
 import { BottomNavigation, BottomNavigationAction, Paper } from '@mui/material'
-import { Home, ShoppingCart, AccountCircle } from '@mui/icons-material'
+import { Home, Search, Favorite, Business, AccountCircle } from '@mui/icons-material'
 
 const BottomNav = () => {
   const location = useLocation()
   const navigate = useNavigate()
+  const { isAuthenticated } = useSelector((state) => state.auth)
 
   const getActiveTab = () => {
     if (location.pathname === '/') return 0
-    if (location.pathname === '/my-bookings') return 1
-    if (location.pathname === '/profile') return 2
+    if (location.pathname === '/search') return 1
+    if (location.pathname === '/properties' || location.pathname === '/colonies') return 2
+    if (location.pathname === '/favorites') return 3
+    if (location.pathname === '/profile' || location.pathname === '/my-bookings') return 4
     return 0
   }
 
@@ -19,10 +23,21 @@ const BottomNav = () => {
         navigate('/')
         break
       case 1:
-        navigate('/my-bookings')
+        navigate('/search')
         break
       case 2:
-        navigate('/profile')
+        navigate('/properties')
+        break
+      case 3:
+        navigate('/favorites')
+        break
+      case 4:
+        // Check if user is authenticated before navigating to profile
+        if (isAuthenticated) {
+          navigate('/profile')
+        } else {
+          navigate('/login')
+        }
         break
       default:
         break
@@ -37,36 +52,48 @@ const BottomNav = () => {
         left: 0,
         right: 0,
         zIndex: 1000,
+        borderTop: '1px solid #e0e0e0',
       }}
-      elevation={3}
+      elevation={8}
     >
-      <BottomNavigation value={getActiveTab()} onChange={handleChange} showLabels>
+      <BottomNavigation 
+        value={getActiveTab()} 
+        onChange={handleChange} 
+        showLabels
+        sx={{
+          height: 65,
+          '& .MuiBottomNavigationAction-root': {
+            minWidth: 'auto',
+            padding: '6px 0',
+          },
+          '& .MuiBottomNavigationAction-label': {
+            fontSize: '0.7rem',
+            marginTop: '4px',
+          },
+          '& .Mui-selected': {
+            color: 'primary.main',
+          },
+        }}
+      >
         <BottomNavigationAction
           label="Home"
           icon={<Home />}
-          sx={{
-            '&.Mui-selected': {
-              color: 'primary.main',
-            },
-          }}
         />
         <BottomNavigationAction
-          label="My Bookings"
-          icon={<ShoppingCart />}
-          sx={{
-            '&.Mui-selected': {
-              color: 'primary.main',
-            },
-          }}
+          label="Search"
+          icon={<Search />}
         />
         <BottomNavigationAction
-          label="Profile"
+          label="Properties"
+          icon={<Business />}
+        />
+        <BottomNavigationAction
+          label="Favorites"
+          icon={<Favorite />}
+        />
+        <BottomNavigationAction
+          label="Account"
           icon={<AccountCircle />}
-          sx={{
-            '&.Mui-selected': {
-              color: 'primary.main',
-            },
-          }}
         />
       </BottomNavigation>
     </Paper>

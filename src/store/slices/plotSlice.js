@@ -1,6 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import axios from '../../api/axios'
-import { demoPlots } from '../../data/demoData'
 
 const initialState = {
   plots: [],
@@ -11,55 +10,47 @@ const initialState = {
 
 export const fetchPlots = createAsyncThunk(
   'plot/fetchPlots',
-  async (colonyId, { rejectWithValue, getState }) => {
+  async (propertyId, { rejectWithValue }) => {
     try {
-      const { auth } = getState()
-      const config = {}
+      const url = propertyId ? `/plots/property/${propertyId}` : '/plots'
+      const { data } = await axios.get(url)
+      console.log('📦 Plots API Response:', data)
       
-      // Add auth header if user is authenticated
-      if (auth.token) {
-        config.headers = {
-          'Authorization': `Bearer ${auth.token}`
-        }
+      // Handle different response structures
+      if (data.data?.plots && Array.isArray(data.data.plots)) {
+        return data.data.plots
+      }
+      if (Array.isArray(data.data)) {
+        return data.data
       }
       
-      const url = colonyId ? `/plots?colonyId=${colonyId}` : '/plots'
-      const { data } = await axios.get(url, config)
-      console.log('✅ Fetched real plots from backend:', data.data.plots.length)
-      return data.data.plots
+      console.warn('⚠️ Unexpected plots data structure:', data)
+      return []
     } catch (error) {
-      // Return demo data if backend fails
-      console.log('Using demo plots data:', error.response?.status === 401 ? 'Authentication required' : error.message)
-      if (colonyId) {
-        return demoPlots.filter(p => p.colonyId._id === colonyId)
-      }
-      return demoPlots
+      console.error('❌ Fetch plots error:', error)
+      return []
     }
   }
 )
 
 export const fetchPlotById = createAsyncThunk(
   'plot/fetchPlotById',
-  async (id, { rejectWithValue, getState }) => {
+  async (id, { rejectWithValue }) => {
     try {
-      const { auth } = getState()
-      const config = {}
+      const { data } = await axios.get(`/plots/${id}`)
+      console.log('📦 Plot Details API Response:', data)
       
-      // Add auth header if user is authenticated
-      if (auth.token) {
-        config.headers = {
-          'Authorization': `Bearer ${auth.token}`
-        }
+      if (data.data?.plot) {
+        return data.data.plot
+      }
+      if (data.data) {
+        return data.data
       }
       
-      const { data } = await axios.get(`/plots/${id}`, config)
-      console.log('✅ Fetched real plot from backend:', data.data.plot.plotNo)
-      return data.data.plot
+      return null
     } catch (error) {
-      // Return demo data if backend fails
-      console.log('Using demo plot data:', error.response?.status === 401 ? 'Authentication required' : error.message)
-      const plot = demoPlots.find(p => p._id === id)
-      return plot || demoPlots[0]
+      console.error('❌ Fetch plot error:', error)
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch plot')
     }
   }
 )
@@ -104,3 +95,4 @@ const plotSlice = createSlice({
 
 export const { clearError, setSelectedPlot } = plotSlice.actions
 export default plotSlice.reducer
+const IS_PROD = import.meta.env.MODE === 'production'
