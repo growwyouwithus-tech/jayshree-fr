@@ -16,6 +16,15 @@ import {
 import { Visibility, VisibilityOff, PersonAdd } from '@mui/icons-material'
 import { register } from '../store/slices/authSlice'
 import toast from 'react-hot-toast'
+import {
+  validateRequired,
+  validateEmail,
+  validatePhone,
+  validatePasswordDigits,
+  validatePasswordMatch,
+  validateMinLength,
+  validateMaxLength
+} from '../utils/validation'
 
 const Register = () => {
   const navigate = useNavigate()
@@ -29,21 +38,86 @@ const Register = () => {
     confirmPassword: '',
     agentCode: '',
   })
+  const [errors, setErrors] = useState({})
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
 
+  const clearError = (fieldName) => {
+    setErrors(prev => {
+      const newErrors = { ...prev }
+      delete newErrors[fieldName]
+      return newErrors
+    })
+  }
+
   const handleChange = (e) => {
+    const { name, value } = e.target
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [name]: value,
     })
+    clearError(name)
+  }
+
+  const validateForm = () => {
+    const newErrors = {}
+    let isValid = true
+
+    // Name validation
+    const nameError = validateRequired(formData.name, 'Full name') ||
+                     validateMinLength(formData.name, 2, 'Full name') ||
+                     validateMaxLength(formData.name, 100, 'Full name')
+    if (nameError) {
+      newErrors.name = nameError
+      isValid = false
+    }
+
+    // Email validation
+    const emailError = validateRequired(formData.email, 'Email') || validateEmail(formData.email)
+    if (emailError) {
+      newErrors.email = emailError
+      isValid = false
+    }
+
+    // Phone validation
+    const phoneError = validateRequired(formData.phone, 'Phone number') || validatePhone(formData.phone)
+    if (phoneError) {
+      newErrors.phone = phoneError
+      isValid = false
+    }
+
+    // Password validation
+    const passwordError = validateRequired(formData.password, 'Password') || validatePasswordDigits(formData.password)
+    if (passwordError) {
+      newErrors.password = passwordError
+      isValid = false
+    }
+
+    // Confirm password validation
+    const confirmPasswordError = validateRequired(formData.confirmPassword, 'Confirm password') ||
+                                validatePasswordMatch(formData.password, formData.confirmPassword)
+    if (confirmPasswordError) {
+      newErrors.confirmPassword = confirmPasswordError
+      isValid = false
+    }
+
+    setErrors(newErrors)
+
+    if (!isValid) {
+      const firstError = Object.values(newErrors)[0]
+      toast.error(firstError, {
+        duration: 4000,
+        position: 'top-right'
+      })
+    }
+
+    return isValid
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    if (formData.password !== formData.confirmPassword) {
-      toast.error('Passwords do not match')
+    if (!validateForm()) {
       return
     }
 
@@ -89,6 +163,9 @@ const Register = () => {
                 value={formData.name}
                 onChange={handleChange}
                 required
+                error={!!errors.name}
+                helperText={errors.name}
+                placeholder="Enter your full name"
               />
             </Grid>
 
@@ -101,6 +178,9 @@ const Register = () => {
                 value={formData.email}
                 onChange={handleChange}
                 required
+                error={!!errors.email}
+                helperText={errors.email}
+                placeholder="your@email.com"
               />
             </Grid>
 
@@ -112,6 +192,9 @@ const Register = () => {
                 value={formData.phone}
                 onChange={handleChange}
                 required
+                error={!!errors.phone}
+                helperText={errors.phone}
+                placeholder="9876543210"
               />
             </Grid>
 
@@ -136,6 +219,9 @@ const Register = () => {
                 value={formData.password}
                 onChange={handleChange}
                 required
+                error={!!errors.password}
+                helperText={errors.password}
+                placeholder="Enter 8-digit password"
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
@@ -160,6 +246,9 @@ const Register = () => {
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 required
+                error={!!errors.confirmPassword}
+                helperText={errors.confirmPassword}
+                placeholder="Confirm 8-digit password"
               />
             </Grid>
           </Grid>

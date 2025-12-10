@@ -18,6 +18,12 @@ import {
 import { Visibility, VisibilityOff, Login as LoginIcon, Email, Phone } from '@mui/icons-material'
 import { login } from '../store/slices/authSlice'
 import toast from 'react-hot-toast'
+import {
+  validateRequired,
+  validateEmail,
+  validatePhone,
+  validatePasswordDigits
+} from '../utils/validation'
 
 const Login = () => {
   const navigate = useNavigate()
@@ -29,23 +35,68 @@ const Login = () => {
     phone: '',
     password: '',
   })
+  const [errors, setErrors] = useState({})
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
 
+  const clearError = (fieldName) => {
+    setErrors(prev => {
+      const newErrors = { ...prev }
+      delete newErrors[fieldName]
+      return newErrors
+    })
+  }
+
   const handleChange = (e) => {
+    const { name, value } = e.target
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [name]: value,
     })
+    clearError(name)
+  }
+
+  const validateForm = () => {
+    const newErrors = {}
+    let isValid = true
+
+    if (loginMethod === 'email') {
+      const emailError = validateRequired(formData.email, 'Email') || validateEmail(formData.email)
+      if (emailError) {
+        newErrors.email = emailError
+        isValid = false
+      }
+    } else {
+      const phoneError = validateRequired(formData.phone, 'Phone number') || validatePhone(formData.phone)
+      if (phoneError) {
+        newErrors.phone = phoneError
+        isValid = false
+      }
+    }
+
+    const passwordError = validateRequired(formData.password, 'Password') || validatePasswordDigits(formData.password)
+    if (passwordError) {
+      newErrors.password = passwordError
+      isValid = false
+    }
+
+    setErrors(newErrors)
+
+    if (!isValid) {
+      const firstError = Object.values(newErrors)[0]
+      toast.error(firstError, {
+        duration: 4000,
+        position: 'top-right'
+      })
+    }
+
+    return isValid
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    // Validation
-    const identifier = loginMethod === 'email' ? formData.email : formData.phone
-    if (!identifier || !formData.password) {
-      toast.error(`Please enter ${loginMethod} and password`)
+    if (!validateForm()) {
       return
     }
 
@@ -54,7 +105,7 @@ const Login = () => {
     try {
       // Send appropriate identifier based on login method
       const credentials = {
-        [loginMethod === 'email' ? 'email' : 'phone']: identifier,
+        [loginMethod === 'email' ? 'email' : 'phone']: loginMethod === 'email' ? formData.email : formData.phone,
         password: formData.password,
       }
       
@@ -122,6 +173,8 @@ const Login = () => {
               required
               placeholder="your@email.com"
               sx={{ mb: 2 }}
+              error={!!errors.email}
+              helperText={errors.email}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -141,6 +194,8 @@ const Login = () => {
               required
               placeholder="9876543210"
               sx={{ mb: 2 }}
+              error={!!errors.phone}
+              helperText={errors.phone}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -160,8 +215,10 @@ const Login = () => {
             value={formData.password}
             onChange={handleChange}
             required
-            placeholder="Enter your password"
+            placeholder="Enter your 8-digit password"
             sx={{ mb: 3 }}
+            error={!!errors.password}
+            helperText={errors.password}
             InputProps={{
               endAdornment: (
                 <InputAdornment position="end">
